@@ -1,0 +1,129 @@
+import pytest
+import csv
+import time
+from appium import webdriver
+# Options are only available since client version 2.3.0
+# If you use an older client then switch to desired_capabilities
+# instead: https://github.com/appium/python-client/pull/720
+from appium.options.android import UiAutomator2Options
+from appium.options.ios import XCUITestOptions
+from appium.webdriver.appium_service import AppiumService
+from appium.webdriver.common.appiumby import AppiumBy
+
+#from src.locators.edit_label_locators import EditLabelLocators
+#from src.pages.edit_label_page import EditLabelPage
+
+APPIUM_PORT = 4723
+APPIUM_HOST = '192.168.0.221' #'127.0.0.1'
+START_TIME = 0
+
+# HINT: fixtures below could be extracted into conftest.py
+# HINT: and shared across all tests in the suite
+@pytest.fixture(scope='session')
+def appium_service():
+    service = AppiumService()
+    service.start(
+        # Check the output of `appium server --help` for the complete list of
+        # server command line arguments
+        args=['--address', APPIUM_HOST, '-p', str(APPIUM_PORT)],
+        timeout_ms=20000,
+    )
+    global START_TIME 
+    START_TIME= time.perf_counter_ns()
+
+    yield service
+    service.stop()
+
+
+def create_ios_driver(custom_opts = None):
+    options = XCUITestOptions()
+    options.platformVersion = '13.4'
+    options.udid = '123456789ABC'
+    if custom_opts is not None:
+        options.load_capabilities(custom_opts)
+    # Appium1 points to http://127.0.0.1:4723/wd/hub by default
+    return webdriver.Remote(f'http://{APPIUM_HOST}:{APPIUM_PORT}', options=options)
+
+
+def create_android_driver(custom_opts = None):
+    options = UiAutomator2Options()
+    options.platformVersion = '13'
+    #options.udid = '123456789ABC'
+    custom_opts = dict(
+        platformName='Android',
+        automationName='uiautomator2',
+        deviceName='pixel 4',
+        #deviceName="27121FDH2000AG", #Pixel 7-27121FDH2000AG,
+        #appPackage='us.newellbrands.dymoletratagconnect',
+        appPackage= 'us.newellbrands.dymolabelmanagerconnect',
+        appActivity='com.pegusapps.MainActivity',
+        language='en',
+        locale='US',
+        noReset=True,
+    )
+    if custom_opts is not None:
+        options.load_capabilities(custom_opts)
+    # Appium1 points to http://127.0.0.1:4723/wd/hub by default
+    return webdriver.Remote(f'http://{APPIUM_HOST}:{APPIUM_PORT}', options=options)
+
+
+@pytest.fixture
+def ios_driver_factory():
+    return create_ios_driver
+
+
+@pytest.fixture
+def ios_driver():
+    # prefer this fixture if there is no need to customize driver options in tests
+    driver = create_ios_driver()
+    yield driver
+    driver.quit()
+
+
+@pytest.fixture(scope="function")
+def android_driver_factory():
+    return create_android_driver
+
+
+@pytest.fixture(scope="function")
+def android_driver():
+    # prefer this fixture if there is no need to customize driver options in tests
+    driver = create_android_driver()
+    yield driver
+    driver.quit()
+
+
+
+def test_ios_click(appium_service, ios_driver_factory):
+    # Usage of the context manager ensures the driver session is closed properly
+    # after the test completes. Otherwise, make sure to call `driver.quit()` on teardown.
+    with ios_driver_factory({
+        'appium:app': '/path/to/app/UICatalog.app.zip'
+    }) as driver:
+        el = driver.find_element(by=AppiumBy.ACCESSIBILITY_ID, value='item')
+        el.click()
+
+
+def test_android_click(appium_service, android_driver_factory):
+    # Usage of the context manager ensures the driver session is closed properly
+    # after the test completes. Otherwise, make sure to call `driver.quit()` on teardown.
+    with android_driver_factory({
+        'appium:app': '/path/to/app/test-app.apk',
+        'appium:udid': '567890',
+    }) as driver:
+        el = driver.find_element(by=AppiumBy.ACCESSIBILITY_ID, value='item')
+        el.click()
+
+
+def cobot_checking():
+    current_time = time.perf_counter_ns()
+    count = round(current_time) - round(START_TIME)
+    if count > 3800:
+        print("send a msg to cobot")
+        receive_msg = 0
+        while True:
+            print('Wait for a singnal from cobot')
+            receive_msg = 'receive cobot data'
+            if receive_msg == 1:
+                print('get a msg from cobot')
+                break
