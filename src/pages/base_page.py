@@ -1,11 +1,6 @@
 from src.helpers.selenium_extended import SeleniumExtended
 from appium import webdriver
 class IlabelerBasePage:
-    """ 
-    基本行为：
-    输入
-    点击
-    """
     default_timeout = 3
 
     def __init__(self,driver) -> None:
