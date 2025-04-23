@@ -10,9 +10,6 @@ from appium.options.ios import XCUITestOptions
 from appium.webdriver.appium_service import AppiumService
 from appium.webdriver.common.appiumby import AppiumBy
 
-#from src.locators.edit_label_locators import EditLabelLocators
-#from src.pages.edit_label_page import EditLabelPage
-
 APPIUM_PORT = 4723
 APPIUM_HOST = '192.168.0.221' #'127.0.0.1'
 START_TIME = 0
