@@ -6,7 +6,6 @@ from src.helpers.print_label import print_a_label
 from src.helpers.print_label import printing_status
 from src.helpers.return_to_home import back_to_home
 from src.helpers.data_path import get_data_path
-
 import allure
 
 @allure.feature("Print testing")
