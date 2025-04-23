@@ -2,9 +2,7 @@ import pytest
 import csv
 import time
 from appium import webdriver
-# Options are only available since client version 2.3.0
-# If you use an older client then switch to desired_capabilities
-# instead: https://github.com/appium/python-client/pull/720
+
 from appium.options.android import UiAutomator2Options
 from appium.options.ios import XCUITestOptions
 from appium.webdriver.appium_service import AppiumService
@@ -13,9 +11,12 @@ from appium.webdriver.common.appiumby import AppiumBy
 APPIUM_PORT = 4723
 APPIUM_HOST = '192.168.0.221' #'127.0.0.1'
 START_TIME = 0
+count_global = 0
+count_printer_times = 0
+bot_IP = "192.168.123.11"
+TIMEOUT = str(0)
+total_tape_times = 1
 
-# HINT: fixtures below could be extracted into conftest.py
-# HINT: and shared across all tests in the suite
 @pytest.fixture(scope='session')
 def appium_service():
     service = AppiumService()
@@ -112,15 +113,69 @@ def test_android_click(appium_service, android_driver_factory):
         el.click()
 
 
-def cobot_checking():
-    current_time = time.perf_counter_ns()
-    count = round(current_time) - round(START_TIME)
-    if count > 3800:
-        print("send a msg to cobot")
-        receive_msg = 0
+@pytest.fixture(scope='session')
+def bot_connect():
+    global START_TIME 
+    START_TIME= time.perf_counter_ns()
+    client = modbus_connect()
+    client.connect() 
+    yield  client
+    client.close()
+
+
+#@pytest.fixture(scope="session")
+def total_cassette_check():
+    global total_tape_times
+    if total_tape_times > 8:
+        pytest.exit("No cassette in the bot")
+    total_tape_times += 1
+    #print(total_tape_times)
+
+#@pytest.fixture(scope="session")
+def print_num_labels_check():
+    global count_global 
+    count_global += 1
+    return count_global
+
+def print_num_labels_default():
+    global count_global
+    count_global = 1
+    return count_global
+
+@pytest.fixture(scope="function")
+def check_cassette_empty(bot_connect):
+    #current_time = time.perf_counter_ns()
+    #count = round(current_time) - round(START_TIME)
+    count = print_num_labels_check()
+    client = bot_connect 
+    client.write_coil(16,False)
+    if count == 1:
+        time.sleep(1)
+        print("send a msg to bot")
+        client.write_coil(16,True)
         while True:
-            print('Wait for a singnal from cobot')
-            receive_msg = 'receive cobot data'
-            if receive_msg == 1:
-                print('get a msg from cobot')
-                break
+            status_bot = client.read_coils(17,1)
+            if (status_bot.bits[0]):
+                print('get a msg from bot')
+                client.write_coil(16,False)
+                print('The app will restart printing')
+                break     
+            time.sleep(1)  
+    if count > 45:
+        print("send a msg to machine")
+        client.write_coil(16,True)
+        while True:
+            status_bot = client.read_coils(17,1)
+            if (status_bot.bits[0]):
+                print('get a msg from bot')
+                client.write_coil(16,False)
+                print('write to false')
+                break  
+            print('Wait for a singnal from bot')
+            print(status_bot)
+            time.sleep(1)  
+        #count = 0
+        print_num_labels_default()
+        total_cassette_check()
+        return False
+    return False 
